@@ -1,0 +1,20 @@
+const hre = require("hardhat");
+
+async function main() {
+    const contractAddress = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"; // Mets ton adresse
+    const MusicRoyaltyNFT = await hre.ethers.getContractFactory("MusicRoyaltyNFT");
+    const contract = MusicRoyaltyNFT.attach(contractAddress);
+
+    const tokenId = 0;
+    const salePrice = hre.ethers.parseUnits("1", "ether"); // Simule une vente à 1 ETH
+
+    const royaltyInfo = await contract.royaltyInfo(tokenId, salePrice);
+
+    console.log(`Bénéficiaire des royalties : ${royaltyInfo[0]}`);
+    console.log(`Montant des royalties sur 1 ETH : ${hre.ethers.formatUnits(royaltyInfo[1], "ether")} ETH`);
+}
+
+main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+});
