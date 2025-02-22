@@ -1,23 +1,27 @@
 const hre = require("hardhat");
 
 async function main() {
-    const marketplaceAddress = "0x0165878A594ca255338adfa4d48449f69242Eb8"; // Mets l'adresse correcte
-    const nftContractAddress = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"; // Mets l'adresse correcte
-    const tokenId = 0; // L'ID du NFT que tu veux vérifier
+    const marketplaceAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // ⚠️ Mets l'adresse correcte de ton contrat Marketplace
+    const nftContractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"; // ⚠️ Mets l'adresse de ton contrat NFT
 
     const Marketplace = await hre.ethers.getContractFactory("Marketplace");
     const marketplace = Marketplace.attach(marketplaceAddress);
 
-    const listing = await marketplace.listings(nftContractAddress, tokenId);
+    // 🔍 Récupérer tous les NFTs listés pour ce contrat NFT
+    const [tokenIds, prices, sellers] = await marketplace.getListedNFTs(nftContractAddress);
 
-    if (listing.seller === "0x0000000000000000000000000000000000000000") {
-        console.log("❌ Ce NFT n'est PAS en vente !");
+    console.log("\n🎯 NFTs actuellement listés sur la marketplace :");
+
+    if (tokenIds.length === 0) {
+        console.log("❌ Aucun NFT en vente !");
     } else {
-        console.log(`✅ NFT ${tokenId} est en vente pour ${hre.ethers.formatEther(listing.price)} ETH`);
+        for (let i = 0; i < tokenIds.length; i++) {
+            console.log(`✅ NFT #${tokenIds[i]} | Prix : ${hre.ethers.formatEther(prices[i])} ETH | Vendeur : ${sellers[i]}`);
+        }
     }
 }
 
 main().catch((error) => {
-    console.error(error);
+    console.error("❌ Erreur lors de la récupération des NFTs listés :", error);
     process.exitCode = 1;
 });

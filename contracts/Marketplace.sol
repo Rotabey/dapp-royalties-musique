@@ -64,4 +64,34 @@ contract Marketplace is ReentrancyGuard, Ownable {
 
         emit NFTSold(msg.sender, nftContract, tokenId, msg.value);
     }
+
+    function getListedNFTs(address nftContract) public view returns (uint256[] memory, uint256[] memory, address[] memory) {
+        uint256 totalListings = 0;
+    
+        // Déterminer combien de NFTs sont listés pour ce contrat spécifique
+        for (uint256 tokenId = 0; tokenId < 10000; tokenId++) {
+            if (listings[nftContract][tokenId].price > 0) {
+                totalListings++;
+            }
+        }
+
+    // Initialiser les tableaux dynamiques
+    uint256[] memory tokenIds = new uint256[](totalListings);
+    uint256[] memory prices = new uint256[](totalListings);
+    address[] memory sellers = new address[](totalListings);
+
+    uint256 index = 0;
+
+    // Remplir les tableaux avec les NFTs réellement listés
+    for (uint256 tokenId = 0; tokenId < 10000; tokenId++) {
+        if (listings[nftContract][tokenId].price > 0) {
+            tokenIds[index] = tokenId;
+            prices[index] = listings[nftContract][tokenId].price;
+            sellers[index] = listings[nftContract][tokenId].seller;
+            index++;
+        }
+    }
+
+    return (tokenIds, prices, sellers);
+}
 }
