@@ -1,24 +1,23 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ethers, BrowserProvider, Contract } from "ethers";
+import { BrowserProvider, Contract } from "ethers";
 import { useAccount } from "wagmi";
 
-// ✅ Adresse du contrat Marketplace
+// ✅ Mets ici l'adresse de TON contrat Marketplace
 const MARKETPLACE_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
-// ✅ ABI avec `getListedNFTs(address nftContract)`
+// ✅ ABI mis à jour avec `getListedNFTs()`
 const MARKETPLACE_ABI = [
   {
-    "constant": true,
-    "inputs": [{ "name": "nftContract", "type": "address" }],
+    "inputs": [],
     "name": "getListedNFTs",
     "outputs": [
+      { "name": "nftContracts", "type": "address[]" },
       { "name": "tokenIds", "type": "uint256[]" },
       { "name": "prices", "type": "uint256[]" },
       { "name": "sellers", "type": "address[]" }
     ],
-    "payable": false,
     "stateMutability": "view",
     "type": "function"
   }
@@ -32,56 +31,62 @@ interface ListedNFT {
   seller: string;
 }
 
-export default function useListedNFTs(nftContractAddress: string) {
+export default function useListedNFTs() {
   const { isConnected } = useAccount();
   const [nfts, setNfts] = useState<ListedNFT[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // ✅ Fonction pour récupérer les NFTs listés
+  // ✅ Vérification et récupération des NFTs
   const fetchNFTs = useCallback(async () => {
+    if (!isConnected) {
+      console.log("🚀 L'utilisateur n'est pas connecté.");
+      return;
+    }
+
     try {
-        setLoading(true);
-        console.log("🛠️ Début de fetchNFTs...");
-        console.log("📌 Adresse du contrat NFT utilisée :", nftContractAddress);
+      setLoading(true);
+      setError(null);
 
-        const provider = new ethers.BrowserProvider((window as any).ethereum);
-        const contract = new ethers.Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, provider);
+      // ✅ Vérifier si window.ethereum est disponible
+      if (!(window as any).ethereum) {
+        throw new Error("Metamask non détecté !");
+      }
 
-        console.log("📌 Appel de getListedNFTs sur :", MARKETPLACE_ADDRESS);
-        const [tokenIds, prices, sellers] = await contract.getListedNFTs(nftContractAddress);
+      // ✅ Initialisation du provider
+      const provider = new BrowserProvider((window as any).ethereum);
+      console.log("✅ Provider chargé :", provider);
 
-        console.log("🔍 Réponse brute de getListedNFTs :", tokenIds, prices, sellers);
+      // ✅ Instanciation du contrat
+      const contract = new Contract(MARKETPLACE_ADDRESS, MARKETPLACE_ABI, provider);
+      console.log("✅ Contrat chargé :", contract.target);
 
-        if (!tokenIds || tokenIds.length === 0) {
-            console.warn("⚠️ Aucun NFT trouvé !");
-        }
+      // ✅ Vérification manuelle
+      console.log("📢 Appel de getListedNFTs()...");
 
-        const formattedNFTs = tokenIds.map((tokenId, index) => ({
-            nftContract: nftContractAddress,
-            tokenId: tokenId.toString(),
-            price: ethers.formatEther(prices[index]),
-            seller: sellers[index],
-        }));
+      // 🔍 Appel de `getListedNFTs()` sans argument
+      const [nftContracts, tokenIds, prices, sellers] = await contract.getListedNFTs();
+      console.log("✅ NFTs récupérés :", { nftContracts, tokenIds, prices, sellers });
 
-        console.log("🎨 NFTs formatés :", formattedNFTs);
-        setNfts(formattedNFTs);
-    } catch (error) {
-        console.error("❌ Erreur lors du chargement des NFTs :", error);
+      const formattedNFTs: ListedNFT[] = tokenIds.map((tokenId: bigint, index: number) => ({
+        nftContract: nftContracts[index],
+        tokenId: tokenId.toString(),
+        price: Number(prices[index]) / 1e18, // Converti en ETH
+        seller: sellers[index],
+      }));
+
+      setNfts(formattedNFTs);
+    } catch (err) {
+      console.error("❌ Erreur lors du chargement des NFTs :", err);
+      setError("Impossible de récupérer les NFTs listés.");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-}, [nftContractAddress]);
+  }, [isConnected]);
 
-  // 🔄 Exécuter fetchNFTs lorsque l'utilisateur est connecté
   useEffect(() => {
-    console.log("🚀 useEffect exécuté !");
-    console.log("📌 isConnected :", isConnected);
-    console.log("📌 nftContractAddress :", nftContractAddress);
+    fetchNFTs();
+  }, [fetchNFTs]);
 
-    if (isConnected && nftContractAddress) {
-      fetchNFTs();
-    }
-  }, [isConnected, nftContractAddress, fetchNFTs]);
-
-  return { nfts, loading };
+  return { nfts, loading, error };
 }
